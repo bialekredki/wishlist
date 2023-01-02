@@ -1,19 +1,18 @@
 import logging
-from collections.abc import Iterable
 
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Depends, Security
 from yarl import URL
 
 import wishlist.exceptions as exceptions
 import wishlist.query as dbquery
-from wishlist.database import client
+from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
 from wishlist.schemas.mixins import UUIDMixin
-from wishlist.schemas.user import UsersSocialMedia
 from wishlist.schemas.third_part_social_media import (
     ThirdPartySocialMediaBase,
     ThirdPartySocialMediaOutput,
 )
+from wishlist.schemas.user import UsersSocialMedia
 from wishlist.view import view
 
 logger = logging.getLogger("myself-endpoints")
@@ -33,13 +32,16 @@ class MySocialMediaView:
 
     RESPONSE_MODEL = {"get": UsersSocialMedia}
 
-    async def get(self, current_user=Security(get_current_user)):
+    async def get(
+        self, client=Depends(get_client), current_user=Security(get_current_user)
+    ):
         """Get My Linked Social Media Accounts"""
         return await dbquery.get_user_social_media(client, id=current_user.id)
 
     async def post(
         self,
         request: ThirdPartySocialMediaBase,
+        client=Depends(get_client),
         current_user=Security(get_current_user),
     ):
         """Link new social media account to my profile."""
@@ -55,7 +57,12 @@ class MySocialMediaView:
             client, url=request.url, uid=current_user.id, name=social_media.name
         )
 
-    async def delete(self, request: UUIDMixin, current_user=Security(get_current_user)):
+    async def delete(
+        self,
+        request: UUIDMixin,
+        client=Depends(get_client),
+        current_user=Security(get_current_user),
+    ):
         """Delete linked social media account."""
         return await dbquery.delete_users_social_media(
             client, id=request.id, uid=current_user.id
