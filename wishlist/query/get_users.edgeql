@@ -1,0 +1,1 @@
+select User {name, slug, country_code, created_at};

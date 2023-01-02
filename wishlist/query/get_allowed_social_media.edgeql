@@ -1,0 +1,1 @@
+select AllowedSocialMedia {name, domain};

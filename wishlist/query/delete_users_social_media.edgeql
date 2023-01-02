@@ -1,0 +1,1 @@
+delete ThirdPartySocialMediaUrl filter .id = <uuid>$id and .user.id = <uuid>$uid;
