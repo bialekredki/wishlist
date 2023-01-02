@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "wishlist"
+version = "0.0.1"
+description = ""
+authors = ["oskar <oskarkorgul@gmail.com>"]
+license = "MIT License"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+hypercorn = "^0.14.3"
+edgedb = "^1.2.0"
+fastapi = {version = "^0.88.0", extras = ["all"]}
+python-slugify = "^7.0.0"
+bcrypt = "^4.0.1"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+yarl = "^1.8.2"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+isort = "^5.11.4"
+pylint = "^2.15.9"
+pytest = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
