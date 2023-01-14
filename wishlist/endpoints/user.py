@@ -12,14 +12,15 @@ import wishlist.query as dbquery
 from wishlist.database import get_client
 from wishlist.schemas.user import CreateUser, DetailedUser, PublicUser
 from wishlist.view import view
+from wishlist.utils.slug import find_unqiue_slug
 
 router = APIRouter()
 logger = logging.getLogger("users-endpoints")
 
 
-@router.get("/users", response_model=Iterable[PublicUser])
+@router.get("/users", response_model=list[PublicUser])
 async def search_users(
-    query: str = Query(None, max_length=128, alias="q"),
+    query: str = Query(None, max_length=128, alias="q", description="Search query."),
     client=Depends(get_client),
 ):
     if query:
@@ -33,7 +34,7 @@ async def search_users(
 class UserView:
 
     RESPONSE_MODEL: ClassVar[dict[str, Any]] = {"post": PublicUser, "get": DetailedUser}
-    EXCEPETIONS: ClassVar[dict[str, Any]] = {
+    EXCEPTIONS: ClassVar[dict[str, Any]] = {
         "post": (exceptions.already_exists_factory,)
     }
 
@@ -57,21 +58,17 @@ class UserView:
         password_hash = bcrypt.hashpw(
             data.password.encode("utf-8"), bcrypt.gensalt()
         ).decode("utf-8")
-        slug = slugify(data.name, max_length=100)
-        nslug = slug
-        for iter in range(2**10):
-            user = await dbquery.get_user_by_slug(client, slug=nslug)
-            if not user:
-                break
-            nslug = f"{slug}#{iter:x}"
-        try:
-            created_user = await dbquery.create_user(
-                client,
-                name=data.name,
-                email=data.email,
-                slug=nslug,
-                password_hash=password_hash,
-            )
-        except ConstraintViolationError:
-            raise exceptions.already_exists_factory(data.email)
-        return created_user
+        for _ in range(12):
+            slug = await find_unqiue_slug(data.name, dbquery.get_user_by_slug)
+            try:
+                return await dbquery.create_user(
+                    client,
+                    name=data.name,
+                    email=data.email,
+                    slug=slug,
+                    password_hash=password_hash,
+                )
+            except ConstraintViolationError as exc:
+                if "email" in str(exc):
+                    break
+        raise exceptions.already_exists_factory(data.email, "User")
