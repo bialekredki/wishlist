@@ -32,9 +32,10 @@ def not_found_exception_factory(uid: UUID | str | None = None):
     )
 
 
-def already_exists_factory(uid: UUID | str | None = None):
+def already_exists_factory(uid: UUID | str = "{UID}", resource_name: str = "Resource"):
     return HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN, detail=f"{uid} already exists."
+        status_code=status.HTTP_409_CONFLICT,
+        detail=f"{resource_name} {uid} already exists.",
     )
 
 
