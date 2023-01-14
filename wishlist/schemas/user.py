@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 
 from wishlist.schemas.mixins import SlugifyMixin, UUIDMixin
 from wishlist.schemas.third_part_social_media import ThirdPartySocialMediaOutput
+from wishlist.security import is_password_safe
 
 
 class UsernameMixin(BaseModel):
@@ -24,7 +25,16 @@ class UsersSocialMedia(UUIDMixin):
 
 class CreateUser(UsernameMixin):
     email: EmailStr = Field(..., description="User's email.")
-    password: str = Field(..., description="User's password.")
+    password: str = Field(
+        ..., description="User's password.", max_length=127, min_length=8
+    )
+
+    @validator("password")
+    @classmethod
+    def _validate_password(cls, value: str):
+        if is_password_safe(value):
+            return value
+        raise ValueError("Password is not strong enough.")
 
 
 class DetailedUser(UsernameMixin, SlugifyMixin, UUIDMixin):

@@ -1,12 +1,13 @@
 from asyncio import gather
 
+import pytest
 from fastapi import status
 from httpx import AsyncClient, Response
 
 from tests.utils import assert_http_exception
 from wishlist import exceptions
 
-STRONG_PASSWORD = "123StrongPassword!@#"
+STRONG_PASSWORD = "!$&VeryStrongPassword147"
 
 
 async def test_user_creation__success(test_client: AsyncClient):
@@ -42,3 +43,22 @@ async def test_user_creation__slug_generation(test_client: AsyncClient):
         ]
     )
     assert all(response.status_code == status.HTTP_200_OK for response in responses)
+
+
+@pytest.mark.parametrize(
+    "password",
+    (
+        "1$2LsD",
+        "test",
+        "veryLongPasswordW1th0tSpecialCharacters",
+        "1234StrongPassword!@#$",
+        "4234StrongPassword!@#$",
+    ),
+)
+async def test_user_creation__weak_password(
+    test_client: AsyncClient, password: str, faker
+):
+    response = await test_client.post(
+        "/user", json={"name": "test", "email": faker.email(), "password": password}
+    )
+    assert response.status_code == 422
