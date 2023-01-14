@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Iterable
 from typing import Any, ClassVar
 
 import bcrypt
@@ -11,8 +10,8 @@ import wishlist.exceptions as exceptions
 import wishlist.query as dbquery
 from wishlist.database import get_client
 from wishlist.schemas.user import CreateUser, DetailedUser, PublicUser
-from wishlist.view import view
 from wishlist.utils.slug import find_unqiue_slug
+from wishlist.view import view
 
 router = APIRouter()
 logger = logging.getLogger("users-endpoints")
@@ -58,7 +57,7 @@ class UserView:
         password_hash = bcrypt.hashpw(
             data.password.encode("utf-8"), bcrypt.gensalt()
         ).decode("utf-8")
-        for _ in range(12):
+        for _ in range(2**5):
             slug = await find_unqiue_slug(data.name, dbquery.get_user_by_slug)
             try:
                 return await dbquery.create_user(
