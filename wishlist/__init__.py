@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 
 from wishlist.config import settings
-from wishlist.database import connect_to_the_database
+from wishlist.database import connect_to_the_database, disconnect_from_the_database
 from wishlist.endpoints import router
 
 
@@ -17,5 +17,9 @@ def initialize_application():
     @app.on_event("startup")
     async def app_startup_routine():
         await connect_to_the_database()
+
+    @app.on_event("shutdown")
+    async def app_shutdown_routine():
+        await disconnect_from_the_database()
 
     return app

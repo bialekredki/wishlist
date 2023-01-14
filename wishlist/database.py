@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from functools import cache
 
@@ -14,5 +15,12 @@ def get_client():
 async def connect_to_the_database():
     logger.info("Trying to connect to the database.")
     client = get_client()
-    await client.query("SELECT 1;")
+    await client.ensure_connected()
     logger.info("Successfully connected to the database.")
+
+
+async def disconnect_from_the_database():
+    client = get_client()
+    logger.info("Trying to disconnect from the database.")
+    await asyncio.wait_for(client.aclose(), 10)
+    logger.info("Successfully disconnected from the database.")
