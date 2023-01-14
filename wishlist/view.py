@@ -29,7 +29,7 @@ def view(
                 )
                 exceptions: Iterable[HTTPException] = getattr(
                     obj, "EXCEPTIONS", {}
-                ).get(method, list())
+                ).get(method, [])
                 exceptions += common_exceptions
                 router.add_api_route(
                     path,
