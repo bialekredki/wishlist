@@ -20,7 +20,7 @@ def user_factory(client, transaction, faker):
         name = name or f"{faker.name()}{base}"
         email = email or f"{faker.name().replace(' ', '')}{base}@example.test.com"
         slug = slug or base
-        await create_user(
+        user = await create_user(
             client,
             name=name,
             email=email,
@@ -30,7 +30,7 @@ def user_factory(client, transaction, faker):
         return type(
             "UserFactoryWrapperObject",
             (object,),
-            {"name": name, "email": email, "slug": slug},
+            {"name": name, "email": email, "slug": slug, "id": user.id},
         )
 
     yield _factory

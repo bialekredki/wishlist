@@ -45,9 +45,6 @@ AUTHORIZATION_EXCEPTION = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
-REQUIRE_HTTPS_EXCEPTION = HTTPException(
-    status_code=status.HTTP_400_BAD_REQUEST, detail="URL is required to be HTTPS."
-)
 
 NOT_SUPPORTED_SOCIAL_MEDIA_SITE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
