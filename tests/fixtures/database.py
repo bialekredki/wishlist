@@ -66,11 +66,10 @@ def database_name(database_drop_timeout_ms, database_drop_retries_limit):
         if is_ok:
             break
         time.sleep(0.1)
-    print(attempts)
     assert is_ok, f"Dropping database {name} timed out. Last fail was {stderr}."
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def client(database_name):
     client = create_async_client()
     await client.ensure_connected()
@@ -78,7 +77,7 @@ async def client(database_name):
     await asyncio.wait_for(client.aclose(), 30)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def transaction(client: AsyncIOClient):
     try:
         async for tx in client.transaction():

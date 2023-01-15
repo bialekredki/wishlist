@@ -20,7 +20,6 @@ async def test_user_creation__success(test_client: AsyncClient):
 
 async def test_user_creation__already_exists(test_client: AsyncClient, user_factory):
     user = await user_factory()
-    print(user.email)
     response = await test_client.post(
         "/user",
         json={"name": "test", "email": user.email, "password": STRONG_PASSWORD},
