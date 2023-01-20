@@ -1,0 +1,1 @@
+delete ListDraft filter .id = <uuid>$id and .owner.id = <uuid>$uid limit 1;

@@ -63,3 +63,13 @@ class MySocialMediaView:
         if result:
             return result
         raise exceptions.not_found_exception_factory(request.id)
+
+
+@view(router, path="/drafts")
+class MyDraftsView:
+    EXCEPTIONS = {"get": (exceptions.AUTHORIZATION_EXCEPTION,)}
+
+    async def get(
+        self, client=Depends(get_client), current_user=Depends(get_current_user)
+    ):
+        return await dbquery.get_users_list_drafts(client, uid=current_user.id)

@@ -45,8 +45,15 @@ AUTHORIZATION_EXCEPTION = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
+FORBIDDEN_EXCEPTION = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden."
+)
 
 NOT_SUPPORTED_SOCIAL_MEDIA_SITE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
     detail="Not supported third-party social media site.",
+)
+
+TOO_MANY_DRAFTS = HTTPException(
+    status_code=status.HTTP_405_METHOD_NOT_ALLOWED, detail="You have too many drafts."
 )

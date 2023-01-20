@@ -1,10 +1,26 @@
 import re
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from enum import Enum
+from functools import wraps
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from wishlist.exceptions import exceptions_to_mapping
+
+
+class Method(str, Enum):
+    GET = "get"
+    POST = "post"
+    PATCH = "patch"
+    DELETE = "delete"
+
+
+@dataclass(frozen=True, init=True, repr=True)
+class EndpointMetadata:
+    name: str
+    methods: set[Method]
 
 
 def _view_class_name_default_parser(cls, method: str):
@@ -40,5 +56,32 @@ def view(
                     responses=exceptions_to_mapping(exceptions),
                     name=name_parser(cls, method),
                 )
+
+    return _decorator
+
+
+def endpoint(
+    function: Callable,
+    methods: Iterable[str | Method],
+    *,
+    name: str | None = None,
+):
+    @wraps(function)
+    def _decorator(*args, **kwargs):
+        parsed_methods = set()
+        for method in methods:
+            if isinstance(method, Method):
+                parsed_methods.add(method)
+                continue
+            try:
+                parsed_methods.add(Method[method.upper()])
+            except KeyError:
+                raise ValueError(f"HTTP Method {method} is not allowed")
+
+        parsed_name = name or function.__name__
+
+        metadata = EndpointMetadata(name=parsed_name, methods=parsed_methods)
+        function.__endpoint_metadata = metadata
+        return function(*args, **kwargs)
 
     return _decorator
