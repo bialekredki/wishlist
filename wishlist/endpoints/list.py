@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, Query, Security
 
 from wishlist import exceptions, query
+from wishlist.config import settings
 from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
 from wishlist.endpoints.item import ALLOWED_ITEM_DRAFT_FIELDS
@@ -62,7 +63,9 @@ class ListDraftView:
         client=Depends(get_client),
         current_user=Security(get_current_user),
     ):
-        if (await query.get_user_draft_count(client, uid=current_user.id)) > 10:
+        if (
+            await query.get_user_draft_count(client, uid=current_user.id)
+        ) >= settings.drafts_max_ammount:
             raise exceptions.TOO_MANY_DRAFTS
         draft = {
             key: value

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, description="Debug flag.")
     jwt: JWTSettings = Field(default_factory=JWTSettings)
     log_level: int | str = Field(default=logging.INFO)
+    drafts_max_ammount: int = Field(default=10)
 
     @validator("log_level")
     @classmethod
