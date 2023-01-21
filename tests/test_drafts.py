@@ -92,3 +92,27 @@ async def test_creating_draft__without_draft_items(
     assert response.status_code == status.HTTP_200_OK
     content = response.json()
     assert not content["draft_items"]
+
+
+async def test_deleting_drafts(
+    test_client: AsyncClient, user_factory, list_draft_factory, client
+):
+    user = await user_factory()
+    list_draft = await list_draft_factory(user.id)
+    response = await test_client.request(
+        "DELETE",
+        "/list/draft",
+        json={"id": str(list_draft.id)},
+        headers=access_token_header(user.slug, user.id),
+    )
+    assert response.status_code == status.HTTP_200_OK
+    draft_items = await asyncio.gather(
+        *(
+            query.get_draft_item(client, id=draft_item.id)
+            for draft_item in list_draft.draft_items
+        )
+    )
+    assert all(draft_item is None for draft_item in draft_items)
+    assert not await query.get_draft_owned_by_user(
+        client, uid=user.id, id=list_draft.id
+    )
