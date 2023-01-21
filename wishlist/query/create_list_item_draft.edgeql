@@ -10,4 +10,4 @@ select (insert ItemDraft {
     draft,
     created_at,
     last_edit_at
-}
+};

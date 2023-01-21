@@ -9,7 +9,7 @@ from wishlist.config import settings
 from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
 from wishlist.endpoints.item import ALLOWED_ITEM_DRAFT_FIELDS
-from wishlist.schemas.item import DraftElementInput, DraftElementOutput, ListDraft
+from wishlist.schemas.draft import DraftElementInput, DraftElementOutput, ListDraft
 from wishlist.schemas.mixins import UUID, UUIDMixin
 from wishlist.view import view
 

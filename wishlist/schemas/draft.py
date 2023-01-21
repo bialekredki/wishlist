@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
 
@@ -24,4 +25,10 @@ class DraftElementOutput(DraftElementInput, AuditableMixin, EditableMixin, UUIDM
 class ListDraft(DraftElementOutput):
     draft_items: list[DraftElementOutput] = Field(
         default_factory=lambda: [], description="List of draft items."
+    )
+
+
+class DraftItemInput(DraftElementInput):
+    list_id: UUID = Field(
+        ..., description="ID of the list that element will be associated with."
     )
