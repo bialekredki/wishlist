@@ -9,9 +9,14 @@ from wishlist.config import settings
 from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
 from wishlist.endpoints.item import ALLOWED_ITEM_DRAFT_FIELDS
-from wishlist.schemas.draft import DraftElementInput, DraftElementOutput, ListDraft
+from wishlist.schemas.draft import (
+    DraftElementInput,
+    DraftElementInputOptionalName,
+    DraftElementOutput,
+    ListDraft,
+)
 from wishlist.schemas.mixins import UUID, UUIDMixin
-from wishlist.view import view
+from wishlist.view import endpoint, view
 
 logger = logging.getLogger("list-endpoints")
 router = APIRouter()
@@ -28,20 +33,27 @@ class ListView:
 class ListDraftView:
 
     EXCEPTIONS = {
+        "__all__": (exceptions.AUTHORIZATION_EXCEPTION,),
         "get": (
             exceptions.not_found_exception_factory,
-            exceptions.AUTHORIZATION_EXCEPTION,
             exceptions.FORBIDDEN_EXCEPTION,
         ),
-        "post": (exceptions.AUTHORIZATION_EXCEPTION,),
         "delete": (
-            exceptions.AUTHORIZATION_EXCEPTION,
             exceptions.not_found_exception_factory,
             exceptions.FORBIDDEN_EXCEPTION,
+        ),
+        "patch": (
+            exceptions.FORBIDDEN_EXCEPTION,
+            exceptions.not_found_exception_factory,
         ),
     }
 
-    RESPONSE_MODEL = {"get": ListDraft, "post": ListDraft, "delete": UUIDMixin}
+    RESPONSE_MODEL = {
+        "get": ListDraft,
+        "post": ListDraft,
+        "delete": UUIDMixin,
+        "patch": DraftElementOutput,
+    }
 
     async def get(
         self,
@@ -108,3 +120,28 @@ class ListDraftView:
         if result:
             return result
         raise exceptions.not_found_exception_factory(request.id)
+
+    @endpoint(methods=("patch",), path="/{list_id}")
+    async def patch(
+        self,
+        list_id: UUID,
+        request: DraftElementInputOptionalName,
+        client=Depends(get_client),
+        current_user=Security(get_current_user),
+    ):
+        """Update draft of a list."""
+        list_draft = await query.get_draft_owned_by_user(
+            client, uid=current_user.id, id=list_id
+        )
+        if list_draft is None:
+            raise exceptions.not_found_exception_factory(list_id)
+        draft = json.dumps(
+            {
+                key: value
+                for key, value in request.draft.items()
+                if key in ALLOWED_LIST_DRAFT_FIELDS
+            }
+        )
+        return await query.update_list_draft(
+            client, id=list_draft.id, name=request.name or list_draft.name, draft=draft
+        )

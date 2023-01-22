@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime
 
 import pytest
 from fastapi import status
@@ -9,7 +10,11 @@ from tests.utils import UserWithTestClient, access_token_header, assert_http_exc
 from wishlist import query
 from wishlist.config import settings
 from wishlist.endpoints.list import ALLOWED_ITEM_DRAFT_FIELDS, ALLOWED_LIST_DRAFT_FIELDS
-from wishlist.exceptions import FORBIDDEN_EXCEPTION, TOO_MANY_DRAFTS
+from wishlist.exceptions import (
+    FORBIDDEN_EXCEPTION,
+    TOO_MANY_DRAFTS,
+    not_found_exception_factory,
+)
 
 
 async def test_user_can_own_limited_amount_of_drafts(
@@ -226,3 +231,64 @@ async def test_deleting_draft_item(
     assert response.status_code == status.HTTP_200_OK
     result = await query.get_draft_item(client, id=draft_item.id)
     assert result is None
+
+
+async def test_list_draft_update(user_factory, list_draft_factory):
+    user: UserWithTestClient = await user_factory()
+    list_draft = await list_draft_factory(user.id)
+
+    response = await user.patch(
+        f"/list/draft/{str(list_draft.id)}",
+        json={
+            "draft": {"thumbnail": "thumbnail of renamed draft"},
+            "name": "Renamed Draft",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    content = response.json()
+    assert content["name"] == "Renamed Draft"
+    assert content["draft"]["thumbnail"] == "thumbnail of renamed draft"
+    assert datetime.fromisoformat(content["last_edit_at"]) > list_draft.last_edit_at
+
+
+async def test_list_draft_update__other_user(user_factory, list_draft_factory):
+    owner = await user_factory()
+    bystander: UserWithTestClient = await user_factory()
+    list_draft = await list_draft_factory(owner.id)
+    response = await bystander.patch(
+        f"/list/draft/{list_draft.id}", json={"name": "name", "draft": {"test": "test"}}
+    )
+    assert_http_exception(not_found_exception_factory, response)
+
+
+async def test_item_draft_update(user_factory, list_draft_factory, draft_item_factory):
+    user: UserWithTestClient = await user_factory()
+    list_draft = await list_draft_factory(user.id)
+    draft_item = await draft_item_factory(list_draft.id)
+    response = await user.patch(
+        f"/item/draft/{str(draft_item.id)}",
+        json={
+            "draft": {"thumbnail": "thumbnail of renamed draft"},
+            "name": "Renamed Draft",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    content = response.json()
+    assert content["name"] == "Renamed Draft"
+    assert content["draft"]["thumbnail"] == "thumbnail of renamed draft"
+    assert datetime.fromisoformat(content["last_edit_at"]) > list_draft.last_edit_at
+
+
+async def test_item_draft_update__other_user(
+    user_factory, list_draft_factory, draft_item_factory
+):
+    owner = await user_factory()
+    bystander: UserWithTestClient = await user_factory()
+    list_draft = await list_draft_factory(owner.id)
+    draft_item = await draft_item_factory(list_draft.id)
+    response = await bystander.patch(
+        f"/item/draft/{draft_item.id}", json={"name": "name", "draft": {"test": "test"}}
+    )
+    assert_http_exception(FORBIDDEN_EXCEPTION, response)

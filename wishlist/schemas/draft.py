@@ -6,8 +6,7 @@ from pydantic import BaseModel, Field, validator
 from wishlist.schemas.mixins import AuditableMixin, EditableMixin, UUIDMixin
 
 
-class DraftElementInput(BaseModel):
-    name: str = Field(..., max_length=64, description="Name of the draft.")
+class Draftable(BaseModel):
     draft: dict = Field(default_factory=lambda: {}, description="Draft in JSON format.")
 
     @validator("draft", pre=True)
@@ -16,6 +15,14 @@ class DraftElementInput(BaseModel):
         if isinstance(value, dict):
             return value
         return json.loads(value)
+
+
+class DraftElementInputOptionalName(Draftable):
+    name: str | None = Field(None, max_length=64, description="Name of the draft.")
+
+
+class DraftElementInput(Draftable):
+    name: str = Field(..., max_length=64, description="Name of the draft.")
 
 
 class DraftElementOutput(DraftElementInput, AuditableMixin, EditableMixin, UUIDMixin):

@@ -7,9 +7,13 @@ from fastapi import APIRouter, Depends, Query, Security
 from wishlist import exceptions, query
 from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
-from wishlist.schemas.draft import DraftElementOutput, DraftItemInput
+from wishlist.schemas.draft import (
+    DraftElementInputOptionalName,
+    DraftElementOutput,
+    DraftItemInput,
+)
 from wishlist.schemas.mixins import UUIDMixin
-from wishlist.view import view
+from wishlist.view import endpoint, view
 
 logger = logging.getLogger("item-endpoints")
 router = APIRouter()
@@ -44,6 +48,7 @@ class ItemDraftView:
         "get": DraftElementOutput,
         "post": DraftElementOutput,
         "delete": DraftElementOutput,
+        "patch": DraftElementOutput,
     }
 
     async def get(
@@ -97,3 +102,34 @@ class ItemDraftView:
             raise exceptions.FORBIDDEN_EXCEPTION
         await query.delete_draft_item(client, id=draft_item.id, uid=current_user.id)
         return draft_item
+
+    @endpoint(("PATCH",), path="/{item_id}")
+    async def patch(
+        self,
+        item_id: UUID,
+        request: DraftElementInputOptionalName,
+        client=Depends(get_client),
+        current_user=Security(get_current_user),
+    ):
+        """Update draft item."""
+        draft_item = await query.get_draft_item(client, id=item_id)
+        if draft_item is None:
+            raise exceptions.not_found_exception_factory(item_id)
+        if draft_item.list_draft.owner.id != current_user.id:
+            raise exceptions.FORBIDDEN_EXCEPTION
+        draft = {
+            key: value
+            for key, value in request.draft.items()
+            if not (isinstance(value, list) or isinstance(value, dict))
+            and key in ALLOWED_ITEM_DRAFT_FIELDS
+        }
+        if draft:
+            draft = json.dumps(draft)
+        else:
+            draft = None
+        return await query.update_item_draft(
+            client,
+            id=item_id,
+            name=request.name or draft_item.name,
+            draft=draft or draft_item.draft,
+        )
