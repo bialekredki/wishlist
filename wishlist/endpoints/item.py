@@ -67,7 +67,7 @@ class ItemDraftView:
     ):
         if not (
             await query.get_draft_owned_by_user(
-                client, uid=current_user, id=request.list_id
+                client, uid=current_user.id, id=request.list_id
             )
         ):
             return exceptions.not_found_exception_factory(request.list_id)
