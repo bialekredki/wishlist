@@ -76,6 +76,11 @@ module default {
         required link owner -> User;
 
         multi link draft_items := .<list_draft[is ItemDraft];
+
+        single link active_list -> List {
+            constraint exclusive;
+            on target delete delete source;
+        } 
     }
 
     type List extending Auditable, Slugified, Editable {
@@ -86,12 +91,13 @@ module default {
             constraint max_len_value(4096);
         }
         property description -> str {
-            constraint max_len_value(1024);
+            constraint max_len_value(256);
         }
 
         required link owner -> User;
 
         multi link items := .<list[is Item];
+        single link active_draft := .<active_list[is ListDraft];
     }
 
     type ItemDraft extending Auditable, Editable {
@@ -106,7 +112,7 @@ module default {
         }
     }
 
-    type Item extending Auditable, Slugified, Editable {
+    type Item extending Auditable, Editable {
         required property name -> str {
             constraint max_len_value(64);
         }

@@ -91,7 +91,7 @@ def endpoint(
             return await function(*args, **kwargs)
 
         parsed_methods = set()
-        _methods = methods or (name,)
+        _methods = methods or ((name,) if name else (function.__name__,))
         for method in _methods:
             if isinstance(method, Method):
                 parsed_methods.add(method)
