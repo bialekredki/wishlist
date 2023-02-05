@@ -61,13 +61,13 @@ def draft_item_factory(client, transaction, draft_input_data):
 
 @pytest.fixture
 def list_draft_factory(client, transaction, list_draft_input_data):
-    async def _factory(uid, data=None):
+    async def _factory(uid, data=None, active_list_slug: str | None = None):
         data = data or list_draft_input_data
         result = await query.create_list_draft(
             client,
             uid=uid,
             name=data["name"],
-            list_slug=None,
+            list_slug=active_list_slug,
             draft=json.dumps(
                 {
                     key: value

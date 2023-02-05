@@ -61,7 +61,7 @@ async def create_draft_list(
     except ConstraintViolationError as exc:
         raise exceptions.already_exists_factory(
             f"from {active_version_slug}", "ListDraft"
-        )
+        ) from exc
     draft_items = await asyncio.gather(
         *(
             query.create_list_item_draft(
