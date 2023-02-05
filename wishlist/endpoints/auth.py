@@ -21,7 +21,6 @@ async def get_current_user(
 ):
     decoded_token = decode_access_token(token)
     try:
-        print(decoded_token["sub"])
         sub = json.loads(decoded_token["sub"])
         return (await dbquery.get_user_by_slug(client, slug=sub["slug"]))[0]
     except (KeyError, IndexError) as exc:
