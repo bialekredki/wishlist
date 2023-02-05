@@ -67,6 +67,7 @@ def list_draft_factory(client, transaction, list_draft_input_data):
             client,
             uid=uid,
             name=data["name"],
+            list_slug=None,
             draft=json.dumps(
                 {
                     key: value

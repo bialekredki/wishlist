@@ -25,7 +25,7 @@ async def test_user_can_own_limited_amount_of_drafts(
         *(list_draft_factory(user.id) for _ in range(settings.drafts_max_ammount))
     )
     response = await test_client.post(
-        "/list/draft",
+        "/draft/list",
         headers=access_token_header(user.slug, user.id),
         json=list_draft_input_data,
     )
@@ -37,7 +37,7 @@ async def test_creating_draft__success(
 ):
     user = await user_factory()
     response = await test_client.post(
-        "/list/draft",
+        "/draft/list",
         headers=access_token_header(user.slug, user.id),
         json=list_draft_input_data,
     )
@@ -63,7 +63,7 @@ async def test_creating_draft__with_name_only(
     user = await user_factory()
     list_draft_input_data["draft"] = {}
     response = await test_client.post(
-        "/list/draft",
+        "/draft/list",
         headers=access_token_header(user.slug, user.id),
         json=list_draft_input_data,
     )
@@ -76,7 +76,7 @@ async def test_creating_draft__with_unallowed_fields(
     user = await user_factory()
     list_draft_input_data["draft"]["fake_field"] = "fake_value"
     response = await test_client.post(
-        "/list/draft",
+        "/draft/list",
         headers=access_token_header(user.slug, user.id),
         json=list_draft_input_data,
     )
@@ -91,7 +91,7 @@ async def test_creating_draft__without_draft_items(
     user = await user_factory()
     list_draft_input_data["draft"]["draft_items"] = []
     response = await test_client.post(
-        "/list/draft",
+        "/draft/list",
         headers=access_token_header(user.slug, user.id),
         json=list_draft_input_data,
     )
@@ -107,7 +107,7 @@ async def test_deleting_drafts(
     list_draft = await list_draft_factory(user.id)
     response = await test_client.request(
         "DELETE",
-        "/list/draft",
+        "/draft/list",
         json={"id": str(list_draft.id)},
         headers=access_token_header(user.slug, user.id),
     )
@@ -238,7 +238,7 @@ async def test_list_draft_update(user_factory, list_draft_factory):
     list_draft = await list_draft_factory(user.id)
 
     response = await user.patch(
-        f"/list/draft/{str(list_draft.id)}",
+        f"/draft/list/{str(list_draft.id)}",
         json={
             "draft": {"thumbnail": "thumbnail of renamed draft"},
             "name": "Renamed Draft",
@@ -257,7 +257,7 @@ async def test_list_draft_update__other_user(user_factory, list_draft_factory):
     bystander: UserWithTestClient = await user_factory()
     list_draft = await list_draft_factory(owner.id)
     response = await bystander.patch(
-        f"/list/draft/{list_draft.id}", json={"name": "name", "draft": {"test": "test"}}
+        f"/draft/list/{list_draft.id}", json={"name": "name", "draft": {"test": "test"}}
     )
     assert_http_exception(not_found_exception_factory, response)
 
