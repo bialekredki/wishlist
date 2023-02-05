@@ -22,16 +22,9 @@ class EditableMixin(BaseModel):
 
 
 class ThumbnailMixin(BaseModel):
-    thumbnail: AnyHttpUrl | FilePath | None = Field(
+    thumbnail: AnyHttpUrl | None = Field(
         None, exclusiveMaximum=4096, description="Location of the thumbnail."
     )
-
-    @validator("thumbnail", pre=True)
-    @classmethod
-    def __validate_thumbnail(cls, value):
-        if isinstance(value, Path) or isinstance(value, AnyHttpUrl):
-            return value
-        return AnyHttpUrl(value, scheme="https")
 
 
 class DescriptionMixin(BaseModel):
