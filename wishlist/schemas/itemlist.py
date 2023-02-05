@@ -19,3 +19,4 @@ class ItemList(ItemListBase, EditableMixin, AuditableMixin, SlugifyMixin, UUIDMi
     items: list[Item] = Field(
         default_factory=lambda: [], description="List of items in the wishlist."
     )
+    active_list_slug: str | None = Field(default=None)

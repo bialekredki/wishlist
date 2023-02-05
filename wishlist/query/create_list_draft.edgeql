@@ -3,7 +3,10 @@ select (insert ListDraft {
     draft := <json>$draft,
     owner := (
         select User filter .id = <uuid>$uid
-        )
+        ),
+    active_list := (
+        select List filter .slug = <optional str>$list_slug
+    )
 }) {
     name,
     draft,

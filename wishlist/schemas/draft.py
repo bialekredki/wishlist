@@ -33,6 +33,9 @@ class ListDraft(DraftElementOutput):
     draft_items: list[DraftElementOutput] = Field(
         default_factory=lambda: [], description="List of draft items."
     )
+    active_list_slug: str | None = Field(
+        default=None, description="Slug of a list that this draft was created from."
+    )
 
 
 class DraftItemInput(DraftElementInput):

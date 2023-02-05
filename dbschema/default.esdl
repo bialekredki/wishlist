@@ -81,6 +81,8 @@ module default {
             constraint exclusive;
             on target delete delete source;
         } 
+
+        property active_list_slug := .active_list.slug;
     }
 
     type List extending Auditable, Slugified, Editable {
