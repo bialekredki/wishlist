@@ -9,11 +9,18 @@ from wishlist.database import get_client
 from wishlist.endpoints.auth import get_current_user
 from wishlist.schemas.mixins import UUIDMixin
 from wishlist.schemas.third_part_social_media import ThirdPartySocialMediaBase
-from wishlist.schemas.user import UsersSocialMedia
+from wishlist.schemas.user import UsersSocialMedia, PublicUser
 from wishlist.view import view
 
 logger = logging.getLogger("myself-endpoints")
 router = APIRouter()
+
+
+@router.get("/basic_info", response_model=PublicUser)
+async def get_my_basic_information(
+    client=Depends(get_client), current_user=Security(get_current_user)
+):
+    return (await dbquery.get_user_by_slug(client, slug=current_user.slug))[0]
 
 
 @view(router, path="/social_media")
@@ -73,3 +80,13 @@ class MyDraftsView:
         self, client=Depends(get_client), current_user=Depends(get_current_user)
     ):
         return await dbquery.get_users_list_drafts(client, uid=current_user.id)
+
+
+@view(router, path="/lists")
+class MyListView:
+    EXCEPTIONS = {"get": (exceptions.AUTHORIZATION_EXCEPTION,)}
+
+    async def get(
+        self, client=Depends(get_client), current_user=Depends(get_current_user)
+    ):
+        return await dbquery.get_users_lists(client, uid=current_user.id)
