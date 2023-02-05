@@ -3,8 +3,8 @@ import json
 import logging
 
 import orjson
+from edgedb.errors import ConstraintViolationError
 from fastapi import APIRouter, Depends, Query, Security
-from fastapi.responses import PlainTextResponse
 from nanoid import generate
 from pydantic import ValidationError
 
@@ -29,17 +29,108 @@ router = APIRouter()
 ALLOWED_LIST_DRAFT_FIELDS = ("thumbnail", "description")
 
 
+async def create_draft_list(
+    input: DraftElementInput, client, current_user, active_version_slug=None
+):
+    if (
+        await query.get_user_draft_count(client, uid=current_user.id)
+    ) >= settings.drafts_max_ammount:
+        raise exceptions.TOO_MANY_DRAFTS
+    draft = {
+        key: value
+        for key, value in input.draft.items()
+        if key in ALLOWED_LIST_DRAFT_FIELDS
+    }
+    draft_items = (
+        {
+            key: value
+            for key, value in draft_item.items()
+            if key in ALLOWED_ITEM_DRAFT_FIELDS
+        }
+        for draft_item in input.draft.get("draft_items", [])
+        if isinstance(draft_item, dict)
+    )
+    try:
+        result = await query.create_list_draft(
+            client,
+            name=input.name,
+            draft=json.dumps(draft),
+            uid=current_user.id,
+            list_slug=active_version_slug,
+        )
+    except ConstraintViolationError as exc:
+        raise exceptions.already_exists_factory(
+            f"from {active_version_slug}", "ListDraft"
+        )
+    draft_items = await asyncio.gather(
+        *(
+            query.create_list_item_draft(
+                client,
+                name=draft_item.get("name") or "item",
+                draft=json.dumps(draft_item),
+                list_id=result.id,
+            )
+            for draft_item in draft_items
+        )
+    )
+    return await query.get_draft_owned_by_user(
+        client, uid=current_user.id, id=result.id
+    )
+
+
 @view(router, path="/list")
 class ListView:
 
     RESPONSE_MODEL = {"get": ItemList}
 
-    @endpoint(path="/{list_id}")
-    async def get(self, list_id: UUID):
-        pass
+    EXCEPTIONS = {"get": (exceptions.not_found_exception_factory,)}
+
+    @endpoint(path="/{slug}")
+    async def get(self, slug: str, client=Depends(get_client)):
+        _list = await query.get_list_by_slug(client, slug=slug)
+        if _list is None:
+            raise exceptions.not_found_exception_factory(slug)
+        return _list
+
+    @endpoint(methods=("post",), path="/{slug}")
+    async def edit(
+        self,
+        slug: str,
+        client=Depends(get_client),
+        current_user=Security(get_current_user),
+    ):
+        _list = await query.get_list_by_slug(client, slug=slug)
+        if _list is None:
+            raise exceptions.not_found_exception_factory(slug)
+        if current_user.id != _list.owner.id:
+            raise exceptions.FORBIDDEN_EXCEPTION
+        draf_items = [
+            dict(
+                thumbnail=item.thumbnail,
+                name=item.name,
+                description=item.description,
+                price=item.price,
+                max_price=item.max_price,
+                min_price=item.min_price,
+                count=item.count,
+                url=item.url,
+            )
+            for item in _list.items
+        ]
+        draft = DraftElementInput(
+            draft=dict(
+                thumbnail=_list.thumbnail,
+                description=_list.description,
+                draft_items=draf_items,
+            ),
+            name=_list.name,
+        )
+        return await create_draft_list(
+            draft, client, current_user, active_version_slug=_list.slug
+        )
 
 
-@view(router, path="/list/draft")
+@view(router, path="/draft/list")
 class ListDraftView:
 
     EXCEPTIONS = {
@@ -90,38 +181,7 @@ class ListDraftView:
         client=Depends(get_client),
         current_user=Security(get_current_user),
     ):
-        if (
-            await query.get_user_draft_count(client, uid=current_user.id)
-        ) >= settings.drafts_max_ammount:
-            raise exceptions.TOO_MANY_DRAFTS
-        draft = {
-            key: value
-            for key, value in request.draft.items()
-            if key in ALLOWED_LIST_DRAFT_FIELDS
-        }
-        draft_items = (
-            {
-                key: value
-                for key, value in draft_item.items()
-                if key in ALLOWED_ITEM_DRAFT_FIELDS
-            }
-            for draft_item in request.draft.get("draft_items", [])
-            if isinstance(draft_item, dict)
-        )
-        result = await query.create_list_draft(
-            client, name=request.name, draft=json.dumps(draft), uid=current_user.id
-        )
-        draft_items = await asyncio.gather(
-            *(
-                query.create_list_item_draft(
-                    client, name="test", draft=json.dumps(draft_item), list_id=result.id
-                )
-                for draft_item in draft_items
-            )
-        )
-        return await query.get_draft_owned_by_user(
-            client, uid=current_user.id, id=result.id
-        )
+        return await create_draft_list(request, client, current_user)
 
     async def delete(
         self,
@@ -195,12 +255,13 @@ class ListDraftView:
         if draft.startswith('"') or draft.startswith("'"):
             draft = draft[1:]
         draft = orjson.loads(draft)
+        slug = list_draft.active_list_slug or f"{list_draft.name}__{generate(size=12)}"
         draft_object = {
             "name": list_draft.name,
             "id": list_draft.id,
             "created_at": list_draft.created_at,
             "last_edit_at": list_draft.last_edit_at,
-            "slug": f"{list_draft.name}__{generate(size=12)}",
+            "slug": slug,
         }
         draft_object.update(draft)
         try:
@@ -222,14 +283,28 @@ class ListDraftView:
         """Saves draft as a Wishlist."""
         validated_model = await self.validate(list_id, client, current_user)
 
-        _list = await query.create_list(
-            client,
-            name=validated_model.name,
-            thumbnail=str(validated_model.thumbnail),
-            description=validated_model.description,
-            slug=validated_model.slug,
-            uid=current_user.id,
-        )
+        try:
+            _list = await query.create_list(
+                client,
+                name=validated_model.name,
+                thumbnail=str(validated_model.thumbnail),
+                description=validated_model.description,
+                slug=validated_model.slug,
+                uid=current_user.id,
+            )
+        except ConstraintViolationError:
+            _list = await query.update_list(
+                client,
+                slug=validated_model.slug,
+                name=validated_model.name,
+                thumbnail=str(validated_model.thumbnail),
+                description=validated_model.description,
+            )
+            if _list is None:
+                raise ValueError(
+                    f"Updating list of slug {validated_model.slug} failed."
+                )
+            await query.clear_items_in_list(client, list_id=_list.id)
         items = await asyncio.gather(
             *(
                 query.create_list_item(
