@@ -1,0 +1,1 @@
+delete ItemDraft filter .id = <uuid>$id and .list_draft.owner.id = <uuid>$uid limit 1;

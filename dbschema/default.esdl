@@ -7,6 +7,12 @@ module default {
         };
     }
 
+    abstract type Editable {
+        required property last_edit_at -> datetime {
+            default := datetime_current();
+        }
+    }
+
     abstract type Slugified {
         required property slug -> str {
             constraint exclusive;
@@ -58,6 +64,97 @@ module default {
             constraint exclusive;
             constraint max_len_value(32);
         }
+    }
+
+    type ListDraft extending Auditable, Editable {
+        required property name -> str {
+            constraint max_len_value(64);
+        }
+
+        required property draft -> json;
+
+        required link owner -> User;
+
+        multi link draft_items := .<list_draft[is ItemDraft];
+
+        single link active_list -> List {
+            constraint exclusive;
+            on target delete delete source;
+        } 
+
+        property active_list_slug := .active_list.slug;
+    }
+
+    type List extending Auditable, Slugified, Editable {
+        required property name -> str {
+            constraint max_len_value(64);
+        }
+        property thumbnail -> str {
+            constraint max_len_value(4096);
+        }
+        property description -> str {
+            constraint max_len_value(256);
+        }
+
+        required link owner -> User;
+
+        multi link items := .<list[is Item];
+        single link active_draft := .<active_list[is ListDraft];
+    }
+
+    type ItemDraft extending Auditable, Editable {
+        required property name -> str {
+            constraint max_len_value(64);
+        }
+
+        required property draft -> json;
+
+        required link list_draft -> ListDraft {
+            on target delete delete source;
+        }
+    }
+
+    type Item extending Auditable, Editable {
+        required property name -> str {
+            constraint max_len_value(64);
+        }
+
+        property thumbnail -> str {
+            constraint max_len_value(4096);
+        }
+
+        property description -> str {
+            constraint max_len_value(256);
+        }
+
+        property price -> float64 {
+            constraint min_value(0);
+        }
+
+        property max_price -> float64 {
+            constraint min_value(0);
+        }
+
+        property min_price -> float64 {
+            constraint min_value(0);
+        }
+
+        property count -> int32 {
+            constraint min_value(0);
+        }
+
+        property url -> str {
+            constraint max_len_value(4096);
+        }
+
+        required link list -> List {
+            on target delete delete source;
+        }
+
+        constraint expression on (
+            .min_price < .max_price
+        );
+        
     }
 
 }

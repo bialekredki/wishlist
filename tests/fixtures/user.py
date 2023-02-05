@@ -1,12 +1,12 @@
 import pytest
 from nanoid import generate
 
-from tests.utils import ALPHANUMERIC_ALPHABET
+from tests.utils import ALPHANUMERIC_ALPHABET, UserWithTestClient
 from wishlist.query import create_user
 
 
 @pytest.fixture(scope="function")
-def user_factory(client, transaction, faker):
+def user_factory(client, transaction, faker, test_client):
     async def _factory(
         *,
         name: str | None = None,
@@ -27,10 +27,12 @@ def user_factory(client, transaction, faker):
             password_hash=password_hash,
             slug=slug,
         )
-        return type(
-            "UserFactoryWrapperObject",
-            (object,),
-            {"name": name, "email": email, "slug": slug, "id": user.id},
+        return UserWithTestClient(
+            test_client=test_client,
+            name=user.name,
+            slug=user.slug,
+            id=user.id,
+            email=email,
         )
 
     yield _factory
