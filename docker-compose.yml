@@ -1,0 +1,20 @@
+version: '3.5'
+
+services:
+  application:
+    container_name: app
+    hostname: app
+    build: 
+      context: .
+      args:
+        - EDGEDB_DSN=edgedb://@db:5656/edgedb
+    ports:
+      - 8000:8000
+    depends_on:
+      - database
+  database:
+    container_name: database
+    hostname: db
+    environment:
+      - EDGEDB_SERVER_SECURITY=insecure_dev_mode
+    image: edgedb/edgedb
