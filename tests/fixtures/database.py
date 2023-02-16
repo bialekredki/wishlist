@@ -11,6 +11,7 @@ from edgedb import AsyncIOClient, create_async_client
 from nanoid import generate
 
 from tests.utils import ALPHANUMERIC_ALPHABET, Rollback
+from tests.edgedb_cli import retryable_command
 
 
 @pytest.fixture(scope="session")
@@ -21,52 +22,19 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
-def database_drop_timeout_ms():
-    return os.environ.get("PYTEST_EDGDE_DROP_TIMEOUT_MS", 12_000)
-
-
-@pytest.fixture(scope="session")
-def database_drop_retries_limit():
-    return os.environ.get("PYTEST_EDGDE_DROP_RETRY_LIMIT", 256)
-
-
-@pytest.fixture(scope="session")
-def database_name(database_drop_timeout_ms, database_drop_retries_limit):
+def database_name():
     name = generate(
         size=10,
         alphabet=ALPHANUMERIC_ALPHABET,
     )
-    proc = subprocess.Popen(
-        ["edgedb", "query", f"create database {name}"], stderr=subprocess.PIPE
-    )
-    assert (
-        b"OK" in proc.communicate()[1]
-    ), f"Database creation({name}) command didn't return OK status."
+    retryable_command(["edgedb", "query", f"create database {name}"], b"OK")
     with mock.patch.dict(os.environ, {"EDGEDB_DATABASE": name}):
         proc = subprocess.Popen(
             ["edgedb", "migration", "apply"], stderr=subprocess.PIPE
         )
         proc.communicate()
         yield name
-
-    start = datetime.now()
-    is_ok = False
-    stderr = None
-    attempts = 0
-    while (
-        timedelta(milliseconds=database_drop_timeout_ms) >= datetime.now() - start
-        and database_drop_retries_limit > attempts
-    ):
-        attempts += 1
-        proc = subprocess.Popen(
-            ["edgedb", "query", f"drop database {name}"], stderr=subprocess.PIPE
-        )
-        stderr = proc.communicate()[1]
-        is_ok = b"OK" in stderr
-        if is_ok:
-            break
-        time.sleep(0.1)
-    assert is_ok, f"Dropping database {name} timed out. Last fail was {stderr}."
+    retryable_command(["edgedb", "query", f"drop database {name}"], b"OK")
 
 
 @pytest_asyncio.fixture(scope="session")
